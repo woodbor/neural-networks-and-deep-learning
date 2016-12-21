@@ -74,15 +74,19 @@ class Network(object):
         nabla_b = [np.zeros(b.shape) for b in self.biases]
         nabla_w = [np.zeros(w.shape) for w in self.weights]
         for x, y in mini_batch:
-            delta_nabla_b, delta_nabla_w = self.backprop(x, y)
-            nabla_b = [nb+dnb for nb, dnb in zip(nabla_b, delta_nabla_b)]
-            nabla_w = [nw+dnw for nw, dnw in zip(nabla_w, delta_nabla_w)]
+            pass
+        X = np.hstack([x[0] for x in mini_batch])
+        Y = np.hstack([y[1] for y in mini_batch])
+
+        delta_nabla_b, delta_nabla_w = self.backprop(X, Y)
+        nabla_b = [nb+dnb for nb, dnb in zip(nabla_b, delta_nabla_b)]
+        nabla_w = [nw+dnw for nw, dnw in zip(nabla_w, delta_nabla_w)]
         self.weights = [w-(eta/len(mini_batch))*nw
                         for w, nw in zip(self.weights, nabla_w)]
         self.biases = [b-(eta/len(mini_batch))*nb
                        for b, nb in zip(self.biases, nabla_b)]
 
-    def backprop(self, x, y):
+    def backprop(self, X, Y):
         """Return a tuple ``(nabla_b, nabla_w)`` representing the
         gradient for the cost function C_x.  ``nabla_b`` and
         ``nabla_w`` are layer-by-layer lists of numpy arrays, similar
@@ -90,16 +94,16 @@ class Network(object):
         nabla_b = [np.zeros(b.shape) for b in self.biases]
         nabla_w = [np.zeros(w.shape) for w in self.weights]
         # feedforward
-        activation = x
-        activations = [x] # list to store all the activations, layer by layer
+        activation = X
+        activations = [X] # list to store all the activations, layer by layer
         zs = [] # list to store all the z vectors, layer by layer
         for b, w in zip(self.biases, self.weights):
-            z = np.dot(w, activation)+b
-            zs.append(z)
-            activation = sigmoid(z)
+            Z = np.dot(w, activation)+b
+            zs.append(Z)
+            activation = sigmoid(Z)
             activations.append(activation)
         # backward pass
-        delta = self.cost_derivative(activations[-1], y) * \
+        delta = self.cost_derivative(activations[-1], Y) * \
             sigmoid_prime(zs[-1])
         nabla_b[-1] = delta
         nabla_w[-1] = np.dot(delta, activations[-2].transpose())
@@ -110,9 +114,9 @@ class Network(object):
         # scheme in the book, used here to take advantage of the fact
         # that Python can use negative indices in lists.
         for l in xrange(2, self.num_layers):
-            z = zs[-l]
-            sp = sigmoid_prime(z)
-            delta = np.dot(self.weights[-l+1].transpose(), delta) * sp
+            Z = zs[-l]
+            SP = sigmoid_prime(Z)
+            delta = np.dot(self.weights[-l+1].transpose(), delta) * SP
             nabla_b[-l] = delta
             nabla_w[-l] = np.dot(delta, activations[-l-1].transpose())
         return (nabla_b, nabla_w)
@@ -139,3 +143,11 @@ def sigmoid(z):
 def sigmoid_prime(z):
     """Derivative of the sigmoid function."""
     return sigmoid(z)*(1-sigmoid(z))
+
+
+if __name__ == '__main__':
+    import mnist_loader
+    training_data, validation_data, test_data = mnist_loader.load_data_wrapper()
+
+    net = Network([784, 30, 10])
+    net.SGD(training_data=training_data, epochs=30, eta=3.0, mini_batch_size=10, test_data=test_data)
