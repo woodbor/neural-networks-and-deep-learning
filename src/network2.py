@@ -129,7 +129,7 @@ class Network(object):
     def SGD(self, training_data, epochs, mini_batch_size, eta,
             lmbda = 0.0,
             regularization='L2',
-            n=0,
+            n_early_stop=0,
             evaluation_data=None,
             monitor_evaluation_cost=False,
             monitor_evaluation_accuracy=False,
@@ -158,7 +158,8 @@ class Network(object):
         n = len(training_data)
         evaluation_cost, evaluation_accuracy = [], []
         training_cost, training_accuracy = [], []
-        early_stopping = n
+        early_stop = n_early_stop
+        eta_schedule = eta
         for j in xrange(epochs):
             random.shuffle(training_data)
             mini_batches = [
@@ -187,11 +188,13 @@ class Network(object):
                 print "Accuracy on evaluation data: {} / {}".format(
                     self.accuracy(evaluation_data), n_data)
                 if evaluation_accuracy[-1] > accuracy:
-                    early_stopping -= 1
-                    if early_stopping == 0:
+                    early_stop -= 1
+                    eta /= 2
+                    if early_stop == 0 or eta == eta_schedule/128:
                         break
                 else:
-                    early_stopping = n
+                    early_stop = n_early_stop
+
         print
         return evaluation_cost, evaluation_accuracy, \
             training_cost, training_accuracy
