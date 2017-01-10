@@ -199,7 +199,63 @@ class Network(object):
         return evaluation_cost, evaluation_accuracy, \
             training_cost, training_accuracy
 
-    def update_mini_batch(self, mini_batch, eta, lmbda, regularization, n):
+    def MSGD(self, training_data, epochs, mini_batch_size, eta,
+            lmbda = 0.0,
+            friction = 1,
+            regularization='L2',
+            n_early_stop=0,
+            evaluation_data=None,
+            monitor_evaluation_cost=False,
+            monitor_evaluation_accuracy=False,
+            monitor_training_cost=False,
+            monitor_training_accuracy=False):
+
+        if evaluation_data: n_data = len(evaluation_data)
+        n = len(training_data)
+        evaluation_cost, evaluation_accuracy = [], []
+        training_cost, training_accuracy = [], []
+        early_stop = n_early_stop
+        eta_schedule = eta
+        for j in xrange(epochs):
+            random.shuffle(training_data)
+            mini_batches = [
+                training_data[k:k+mini_batch_size]
+                for k in xrange(0, n, mini_batch_size)]
+            for mini_batch in mini_batches:
+                self.update_mini_batch(
+                    mini_batch, eta, lmbda, regularization, len(training_data), friction)
+            print "Epoch %s training complete" % j
+            if monitor_training_cost:
+                cost = self.total_cost(training_data, lmbda)
+                training_cost.append(cost)
+                print "Cost on training data: {}".format(cost)
+            if monitor_training_accuracy:
+                accuracy = self.accuracy(training_data, convert=True)
+                training_accuracy.append(accuracy)
+                print "Accuracy on training data: {} / {}".format(
+                    accuracy, n)
+            if monitor_evaluation_cost:
+                cost = self.total_cost(evaluation_data, lmbda, convert=True)
+                evaluation_cost.append(cost)
+                print "Cost on evaluation data: {}".format(cost)
+            if monitor_evaluation_accuracy:
+                accuracy = self.accuracy(evaluation_data)
+                evaluation_accuracy.append(accuracy)
+                print "Accuracy on evaluation data: {} / {}".format(
+                    self.accuracy(evaluation_data), n_data)
+                if evaluation_accuracy[-1] > accuracy:
+                    early_stop -= 1
+                    eta /= 2
+                    if early_stop == 0 or eta == eta_schedule/128:
+                        break
+                else:
+                    early_stop = n_early_stop
+
+        print
+        return evaluation_cost, evaluation_accuracy, \
+            training_cost, training_accuracy
+
+    def update_mini_batch(self, mini_batch, eta, lmbda, regularization, n, friction=0):
         """Update the network's weights and biases by applying gradient
         descent using backpropagation to a single mini batch.  The
         ``mini_batch`` is a list of tuples ``(x, y)``, ``eta`` is the
@@ -215,10 +271,10 @@ class Network(object):
             nabla_w = [nw+dnw for nw, dnw in zip(nabla_w, delta_nabla_w)]
 
         if regularization == 'L2':
-            self.weights = [(1-eta*(lmbda/n))*w-(eta/len(mini_batch))*nw
+            self.weights = [(1-eta*(lmbda/n))*w + friction*w -(eta/len(mini_batch))*nw
                             for w, nw in zip(self.weights, nabla_w)]
         elif regularization == 'L1':
-            self.weights = [w - (eta*lmbda)/n*np.sign(w)-(eta/len(mini_batch))*nw
+            self.weights = [w + friction*w - (eta*lmbda)/n*np.sign(w)-(eta/len(mini_batch))*nw
                             for w, nw in zip(self.weights, nabla_w)]
 
         self.biases = [b-(eta/len(mini_batch))*nb
