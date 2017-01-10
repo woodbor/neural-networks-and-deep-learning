@@ -129,6 +129,7 @@ class Network(object):
     def SGD(self, training_data, epochs, mini_batch_size, eta,
             lmbda = 0.0,
             regularization='L2',
+            n=0,
             evaluation_data=None,
             monitor_evaluation_cost=False,
             monitor_evaluation_accuracy=False,
@@ -157,6 +158,7 @@ class Network(object):
         n = len(training_data)
         evaluation_cost, evaluation_accuracy = [], []
         training_cost, training_accuracy = [], []
+        early_stopping = n
         for j in xrange(epochs):
             random.shuffle(training_data)
             mini_batches = [
@@ -184,7 +186,13 @@ class Network(object):
                 evaluation_accuracy.append(accuracy)
                 print "Accuracy on evaluation data: {} / {}".format(
                     self.accuracy(evaluation_data), n_data)
-            print
+                if evaluation_accuracy[-1] > accuracy:
+                    early_stopping -= 1
+                    if early_stopping == 0:
+                        break
+                else:
+                    early_stopping = n
+        print
         return evaluation_cost, evaluation_accuracy, \
             training_cost, training_accuracy
 
@@ -337,3 +345,11 @@ def sigmoid(z):
 def sigmoid_prime(z):
     """Derivative of the sigmoid function."""
     return sigmoid(z)*(1-sigmoid(z))
+
+if __name__ == '__main__':
+    import mnist_loader
+    training_data, validation_data, test_data = mnist_loader.load_data_wrapper()
+
+    net = Network([784, 30, 10])
+    net.SGD(training_data=training_data, epochs=30, eta=3.0, mini_batch_size=10, test_data=test_data,
+            regularization='L1', n=10)
