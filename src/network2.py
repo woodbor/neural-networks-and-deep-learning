@@ -13,6 +13,7 @@ features.
 
 #### Libraries
 # Standard library
+import itertools
 import json
 import random
 import sys
@@ -160,7 +161,9 @@ class Network(object):
         training_cost, training_accuracy = [], []
         early_stop = n_early_stop
         eta_schedule = eta
-        for j in xrange(epochs):
+
+        stop_convergence = itertools.count() if n_early_stop else epochs
+        for j in xrange(stop_convergence):
             random.shuffle(training_data)
             mini_batches = [
                 training_data[k:k+mini_batch_size]
@@ -187,14 +190,13 @@ class Network(object):
                 evaluation_accuracy.append(accuracy)
                 print "Accuracy on evaluation data: {} / {}".format(
                     self.accuracy(evaluation_data), n_data)
-                if evaluation_accuracy[-1] > accuracy:
-                    early_stop -= 1
-                    eta /= 2
-                    if early_stop == 0 or eta == eta_schedule/128:
-                        break
+            if early_stop and evaluation_accuracy[-1] > accuracy:
+                early_stop -= 1
+                eta /= 2
+                if early_stop == 0 or eta == eta_schedule/128:
+                    break
                 else:
                     early_stop = n_early_stop
-
         print
         return evaluation_cost, evaluation_accuracy, \
             training_cost, training_accuracy
@@ -216,7 +218,9 @@ class Network(object):
         training_cost, training_accuracy = [], []
         early_stop = n_early_stop
         eta_schedule = eta
-        for j in xrange(epochs):
+
+        stop_convergence = itertools.count() if n_early_stop else epochs
+        for j in xrange(stop_convergence):
             random.shuffle(training_data)
             mini_batches = [
                 training_data[k:k+mini_batch_size]
@@ -243,11 +247,11 @@ class Network(object):
                 evaluation_accuracy.append(accuracy)
                 print "Accuracy on evaluation data: {} / {}".format(
                     self.accuracy(evaluation_data), n_data)
-                if evaluation_accuracy[-1] > accuracy:
-                    early_stop -= 1
-                    eta /= 2
-                    if early_stop == 0 or eta == eta_schedule/128:
-                        break
+            if early_stop and evaluation_accuracy[-1] > accuracy:
+                early_stop -= 1
+                eta /= 2
+                if early_stop == 0 or eta == eta_schedule/128:
+                    break
                 else:
                     early_stop = n_early_stop
 
